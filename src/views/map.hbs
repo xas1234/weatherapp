@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>Weather | Map</title>
+    <!-- NAUDOJAMAS BOOTSTRAP CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  </head>
+   <style>
+    body {
+/* PUSLAPIO FONO PAVEIKSLIUKAS IR JO IŠSIDĖSTYMAS */
+  background-image:url('./pictures/background.jpg');
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  /* TEKSTO SPALVA */
+ color:white
+}
+ /* ŽEMĖLAPIO IŠSIDESTYMAS, PLOTIS, AUKŠTIS */
+.leaflet-container {  
+    width: 900px;
+     height: 550px;
+      margin-right:auto; 
+      margin-left: auto;
+}
+  </style>
+  <body> <!-- SUKURIAMAS NARŠYMO JUOSTOS MENIU -->
+   <nav class="navbar navbar-expand-lg navbar-dark bg-transparent">
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">  <!-- NAVIGACINĖS NUORODOS -->
+            <a class="nav-link" href="/">Home </a>
+          </li>
+          <li class="nav-item"> <a class="nav-link" href="/database"> Database</a> </li> 
+          <li class="nav-item"> <a class="nav-link" href="/charts/EYVI"> Charts</a> </li>
+          <li class="nav-item active"> <a class="nav-link"  href="/map">Map<span class="sr-only">(current)</span></a></li>     
+        </ul>
+      </div>
+    </nav>  
+    <!--Puslapio turinys -->
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12 text-center main">
+          <div>
+            <h1 class="mt-3">Lithuanian Aviation Air Data Map</h1>
+            <p class="lead">Choose data by using layer icon in the top right corner of the map</p>  
+          </div>
+             <div class="leaflet-container" id = "map" style = "opacity:0.9"></div> <!-- ŽEMALPIO ATVAIZDAVIMAS -->     
+      <script>
+        var mymap = L.map('map').setView([55.0, 23.0], 7) // ŽEMĖLAPIO SUKŪRIMAS, CENTRO KOORDINATES IR PRIARTINIMAS
+var layer = L.tileLayer( // ŽEMĖLAPIO IŠKLOTINĖS PRIDĖJIMAS PRIE ŽĖMELAPIO
+    'https://api.maptiler.com/maps/topo/256/{z}/{x}/{y}.png?key=TrYnnfrTHkjGnNdn4gnt',
+    { maxZoom: 18, }
+).addTo(mymap)
+L.marker([54.635497458, 25.285998856]) // LIETUVOS ORO UOSTŲ ŽYMEKLIŲ SUKŪRIMAS IR PRIDĖJIMAS SU IŠŠOKANČIAIS LANGAIS
+    .addTo(mymap)
+    .bindPopup(
+        'Vilnius International Airport<br>Coordinates: 54.635497458 25.285998856'
+    )
+L.marker([54.9583295, 24.08416633])
+    .addTo(mymap)
+    .bindPopup(
+        'Kaunas International Airport<br>Coordinates: N54.9583295 24.08416633'
+    )
+L.marker([55.889329776, 23.390331772])
+    .addTo(mymap)
+    .bindPopup(
+        'Šiauliai International Airport<br>Coordinates: N55.889329776 23.390331'
+    )
+L.marker([55.970662784, 21.089666308])
+    .addTo(mymap)
+    .bindPopup(
+        'Palanga International Airport<br>Coordinates: 55.970662784 21.089666308'
+    )
+// SKALĖS SUKŪRIMAS
+var scale = L.control.scale({ imperial: false }).addTo(mymap)
+// KONTROLĖS TAŠKŲ IKONŲ KONFIGŪRACIJA
+var waypointIcon = L.Icon.extend({
+    options: {
+        iconSize: [22, 15], 
+        iconAnchor: [20, 18], 
+        popupAnchor: [0, -15], 
+    },
+})
+// SUKURIAMOS RADARO IKONŲ KINTAMASIS
+var radarIcon = L.Icon.extend({
+    options: {
+        iconSize: [30, 30], 
+        iconAnchor: [14, 14], 
+        popupAnchor: [1, -15], 
+    },
+})
+// PRISKIRIAMA KOKIUS NAUDOTIS PAVEIKSLIUKUS IKONŲ ATVAIZDAVIMUI
+waypointBlue = new waypointIcon({ iconUrl: '/pictures/waypointBlue.png' })
+waypointWhite = new waypointIcon({ iconUrl: '/pictures/waypointWhite.png' })
+radarBlue = new radarIcon({ iconUrl: '/pictures/radar.png' })
+// SUKURIAMI SLUOKSNIAI SKIRTINGIEMS ORO EDVĖS DUOMENIMS
+var waypoints = L.layerGroup() 
+var tma = L.layerGroup()
+var altitude = L.layerGroup()
+var fir = L.layerGroup()
+var tsa = L.layerGroup()
+var sgz = L.layerGroup()
+var radar = L.layerGroup()
+// SUKURIAMI KONTROLĖS TAŠKAI SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMI PRIE WAYPOINTS SLUOKSNIO
+var marker01 = L.marker([56.29778, 18.89833], {
+    title: 'ADAXA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ADAXA</b><br>Coordinate: N56.29778, E18.89833')
+var marker02 = L.marker([55.4, 20.55333], {
+    title: 'AGONA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>AGONA</b><br>Coordinate: N55.4, E20.55333')
+var marker03 = L.marker([54.59611, 25.10528], {
+    title: 'ALISI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ALISI</b><br>Coordinate: N54.59611, E25.10528')
+var marker04 = L.marker([56.38278, 22.61278], {
+    title: 'ASKOR',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ASKOR</b><br>Coordinate: N56.38278, E22.61278')
+var marker05 = L.marker([54.55306, 25.38917], {
+    title: 'ATGEL',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ATGEL</b><br>Coordinate: N54.55306, E25.38917')
+var marker06 = L.marker([54.38833, 25.58833], {
+    title: 'BADUS',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BADUS</b><br>Coordinate: N54.38833, 25.58833')
+var marker07 = L.marker([55.81028, 19.09111], {
+    title: 'BALIT',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BALIT</b><br>Coordinate: N55.81028, E19.09111')
+var marker08 = L.marker([55.45917, 26.55111], {
+    title: 'BATKU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BATKU</b><br>Coordinate: N55.45917, 26.55111')
+var marker09 = L.marker([53.97444, 24.54806], {
+    title: 'BEGDA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BEGDA</b><br>Coordinate: N53.97444, 24.54806')
+var marker10 = L.marker([56.36306, 23.42639], {
+    title: 'BERIL',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BERIL</b><br>Coordinate: 56.36306, 23.42639')
+var marker11 = L.marker([54.3075, 23.05917], {
+    title: 'BOKSU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BOKSU</b><br>Coordinate: 54.3075, 23.05917')
+var marker12 = L.marker([56.03139, 20.965], {
+    title: 'BUKIV',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>BUKIV</b><br>Coordinate: 56.03139, 20.965')
+var marker13 = L.marker([54.58361, 23.25944], {
+    title: 'DETIG',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>DETIG</b><br>Coordinate: 54.58361, 23.25944')
+var marker14 = L.marker([55.43861, 23.41056], {
+    title: 'DIBET',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>DIBET</b><br>Coordinate: 55.43861, 23.41056')
+var marker15 = L.marker([54.2825, 24.33583], {
+    title: 'DIMTA',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>DIMTA</b><br>Coordinate: 54.2825, 24.33583')
+var marker16 = L.marker([56.00694, 21.25972], {
+    title: 'DIREV',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>DIREV</b><br>Coordinate: 56.00694, 21.25972')
+var marker17 = L.marker([54.47139, 25.61528], {
+    title: 'DUKAT',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>DUKAT</b><br>Coordinate: 54.47139, 25.61528')
+var marker18 = L.marker([56.325, 21.60806], {
+    title: 'EKLIN',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>EKLIN</b><br>Coordinate: 56.325, 21.60806')
+var marker19 = L.marker([54.800556, 24.688889], {
+    title: 'ELEKA',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ELEKA</b><br>Coordinate: N54.800556, E24.688889')
+var marker20 = L.marker([54.613889, 25.431667], {
+    title: 'EPINI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>EPINI</b><br>Coordinate: N54.613889, E25.431667')
+var marker21 = L.marker([56.36889, 24.63028], {
+    title: 'ERIVA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ERIVA</b><br>Coordinate: N56.36889, E24.63028')
+var marker22 = L.marker([56.14611, 20.08222], {
+    title: 'GARSO',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>GARSO</b><br>Coordinate: N56.14611, E20.08222')
+var marker23 = L.marker([55.93528, 22.66528], {
+    title: 'GIGIN',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>GIGIN</b><br>Coordinate: N55.93528, 22.66528')
+var marker24 = L.marker([56.37139, 23.75556], {
+    title: 'GUNTA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>GUNTA</b><br>Coordinate: N56.37139, 23.75556')
+var marker25 = L.marker([55.34444, 24.63694], {
+    title: 'IKAMU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>IKAMU</b><br>Coordinate: N55.34444, 24.63694')
+var marker26 = L.marker([56.36944, 24.95861], {
+    title: 'IRBEX',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>IRBEX</b><br>Coordinate: N56.36944, 24.95861')
+var marker27 = L.marker([54.48389, 24.22], {
+    title: 'IRKAL',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>IRKAL</b><br>Coordinate: N54.48389, 24.22')
+var marker28 = L.marker([55.14083, 21.71667], {
+    title: 'ITVUL',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ITVUL</b><br>Coordinate: N55.14083, 21.71667')
+var marker29 = L.marker([56.21278, 19.57333], {
+    title: 'KEDUX',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>KEDUX</b><br>Coordinate: N56.21278, E19.57333')
+var marker30 = L.marker([55.82722, 21.18639], {
+    title: 'KOLOP',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>KOLOP</b><br>Coordinate: N55.82722, 21.18639')
+var marker31 = L.marker([54.94139, 22.73472], {
+    title: 'KRAKI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>KRAKI</b><br>Coordinate: N54.94139, 22.73472')
+var marker32 = L.marker([54.65167, 22.755], {
+    title: 'LAKOD',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LAKOD</b><br>Coordinate: N54.65167, 22.755')
+var marker33 = L.marker([54.83111, 25.77861], {
+    title: 'LAFAT',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LAFAT</b><br>Coordinate: N54.83111, 25.77861')
+var marker33 = L.marker([54.6375, 25.135], {
+    title: 'LEDVI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LEDVI</b><br>Coordinate: N54.6375, 25.135')
+var marker34 = L.marker([56.13889, 25.57139], {
+    title: 'LISGO',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LISGO</b><br>Coordinate: N56.13889, 25.57139')
+var marker35 = L.marker([56.37472, 21.94417], {
+    title: 'LITPA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LITPA</b><br>Coordinate: N56.37472, 21.94417')
+var marker36 = L.marker([56.17528, 25.15861], {
+    title: 'LUNIT',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>LUNIT</b><br>Coordinate: N56.17528, 25.15861')
+var marker37 = L.marker([55.67611, 22.03556], {
+    title: 'MANUX',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>MANUX</b><br>Coordinate: N55.67611, 22.03556')
+var marker38 = L.marker([56.4225, 22.03556], {
+    title: 'MIRMA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>MIRMA</b><br>Coordinate: N56.4225, 22.03556')
+var marker39 = L.marker([56.06222, 23.44278], {
+    title: 'MISVU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>MISVU</b><br>Coordinate: N56.06222, 23.44278')
+var marker40 = L.marker([55.47972, 24.97778], {
+    title: 'MURUN',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>MURUN</b><br>Coordinate: N55.47972, 24.97778')
+var marker41 = L.marker([55.42806, 23.25472], {
+    title: 'NAPOT',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>NAPOT</b><br>Coordinate: N55.42806, 23.25472')
+var marker42 = L.marker([55.3, 20.91667], {
+    title: 'NERIG',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>NERIG</b><br>Coordinate: N55.30000, 20.91667')
+var marker43 = L.marker([56.22889, 18.28556], {
+    title: 'NINTA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>NINTA</b><br>Coordinate: N56.22889, E18.28556')
+var marker44 = L.marker([55.47444, 20.29167], {
+    title: 'OTVOV',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>OTVOV</b><br>Coordinate: N55.47444, E20.29167')
+var marker45 = L.marker([55.45111, 23.61028], {
+    title: 'PELUT',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>PELUT</b><br>Coordinate: N55.45111, 23.61028')
+var marker46 = L.marker([55.13667, 26.47417], {
+    title: 'PODIL',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>PODIL</b><br>Coordinate: N55.13667, 26.47417')
+var marker47 = L.marker([54.88611, 24.22], {
+    title: 'RAVPO',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>RAVPO</b><br>Coordinate: N54.88611, 24.22')
+var marker48 = L.marker([56.29889, 24.03167], {
+    title: 'ROLAV',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ROLAV</b><br>Coordinate: N56.29889, 24.03167')
+var marker49 = L.marker([55.74472, 19.32917], {
+    title: 'RONUN',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>RONUN</b><br>Coordinate: N55.74472, E19.32917')
+var marker50 = L.marker([56.09028, 20.49556], {
+    title: 'RONUS',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>RONUS</b><br>Coordinate: N56.09028, 20.49556')
+var marker51 = L.marker([56.07389, 21.09361], {
+    title: 'RUCAV',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>RUCAV</b><br>Coordinate: N56.07389, 21.09361')
+var marker52 = L.marker([55.23528, 21.43806], {
+    title: 'RUSNE',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>RUSNE</b><br>Coordinate: N55.23528, 21.43806')
+var marker53 = L.marker([55.035, 23.84111], {
+    title: 'SITGU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>SITGU</b><br>Coordinate: N55.035, 23.84111')
+var marker54 = L.marker([54.21306, 25.19583], {
+    title: 'SOGBI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>SOGBI</b><br>Coordinate: N54.21306, 25.19583')
+var marker55 = L.marker([55.7375, 23.3325], {
+    title: 'SUDAB',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>SUDAB</b><br>Coordinate: N55.7375, 23.3325')
+var marker56 = L.marker([55.47139, 25.22139], {
+    title: 'TAGOL',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TAGOL</b><br>Coordinate: N55.47139, 25.22139')
+var marker57 = L.marker([55.60361, 19.83833], {
+    title: 'TIGNU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TIGNU</b><br>Coordinate: N55.60361, E19.83833')
+var marker58 = L.marker([55.93472, 20.92667], {
+    title: 'TILDU',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TILDU</b><br>Coordinate: N55.93472, 20.92667')
+var marker59 = L.marker([56.06722, 20.74778], {
+    title: 'TIRIN',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TIRIN</b><br>Coordinate: N56.06722, 20.74778')
+var marker60 = L.marker([53.94833, 23.89889], {
+    title: 'TUMKI',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TUMKI</b><br>Coordinate: N53.94833, 23.89889')
+var marker61 = L.marker([55.05028, 24.13639], {
+    title: 'TUSDA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>TUSDA</b><br>Coordinate: N55.05028, 24.13639')
+var marker62 = L.marker([55.46417, 23.8125], {
+    title: 'UGNIS',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>UGNIS</b><br>Coordinate: N55.46417, 23.8125')
+var marker63 = L.marker([54.87472, 23.99139], {
+    title: 'ULKIL',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ULKIL</b><br>Coordinate: N54.87472, 23.99139')
+var marker64 = L.marker([55.89167, 23.14722], {
+    title: 'URUBA',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>URUBA</b><br>Coordinate: N55.89167, 23.14722')
+var marker65 = L.marker([54.38667, 24.27694], {
+    title: 'UPASI',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>UPASI</b><br>Coordinate: N54.38667, 24.27694')
+var marker66 = L.marker([56.28028, 24.51639], {
+    title: 'URIDO',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>URIDO</b><br>Coordinate: N56.28028, E24.51639')
+var marker67 = L.marker([55.46194, 25.44333], {
+    title: 'UTENU',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>UTENU</b><br>Coordinate: N55.46194, 25.44333')
+var marker68 = L.marker([54.19444, 23.40694], {
+    title: 'VABER',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>VABER</b><br>Coordinate: N54.19444, 23.40694')
+var marker69 = L.marker([56.24972, 19.285], {
+    title: 'VAGVO',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>VAGVO</b><br>Coordinate: N56.24972, E19.28500')
+var marker70 = L.marker([55.69222, 20.13306], {
+    title: 'VALUV',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>VALUV</b><br>Coordinate: N55.69222, 20.13306')
+var marker72 = L.marker([55.89278, 23.64556], {
+    title: 'VESAM',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>VESAM</b><br>Coordinate: N55.89278, 23.64556')
+var marker73 = L.marker([56.21583, 21.9825], {
+    title: 'XARIN',
+    icon: waypointWhite,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>XARIN</b><br>Coordinate: N56.21583, 21.9825')
+var marker74 = L.marker([54.67306, 25.73528], {
+    title: 'ZENIT',
+    icon: waypointBlue,
+    opacity: 1,
+})
+    .addTo(waypoints)
+    .bindPopup('Waypoint: <b>ZENIT</b><br>Coordinate: N54.67306, 25.73528')
+// // SUKURIAMOS SKRYDŽIO ZONOS SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMI PRIE TMA SLUOKSNIO
+//KAUNAS
+var polygon = L.polygon(
+    [
+        [55.25016, 24.64481],
+        [55.2848, 23.79598],
+        [55.25396, 23.37065],
+        [54.99576, 23.24465],
+        [54.78437, 23.3625],
+        [54.62849, 23.58123],
+        [54.7109, 24.01196],
+        [54.69529, 24.41831],
+        [54.800556, 24.688889],
+    ],
+    { title: 'TMA KAUNAS B', opacity: 0.5, color: '#a12323' }
+).addTo(tma)
+
+polygon.bindPopup(
+    '<b>TMA KAUNAS SECTOR B</b><br>ACCL 3000 MSL = 3000 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b> <br>124.200 MHz KAUNAS TWR, <br>118.505 MHz KAUNAS TWR (ALT), <br>129.050 MHz KAUNAS ATIS<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMRG <br><b>Call sign:</b> KAUNAS TOWER<br>'
+)
+var polygon = L.polygon(
+    [
+        [55.14212, 23.58163],
+        [55.17768, 24.4234],
+        [55.14861, 24.4703],
+        [55.11748, 24.50869],
+        [55.08381, 24.53982],
+        [55.04814, 24.5832],
+        [55.01682, 24.57664],
+        [54.98339, 24.58434],
+        [54.94675, 24.58522],
+        [54.91031, 24.57834],
+        [54.87886, 24.56593],
+        [54.847, 24.5468],
+        [54.81657, 24.52162],
+        [54.80389, 24.50886],
+        [54.76751, 23.59566],
+        [54.8042, 23.55622],
+        [54.84788, 23.52251],
+        [54.89843, 23.49837],
+        [54.95517, 23.48809],
+        [55.01056, 23.49442],
+        [55.06311, 23.51592],
+        [55.10881, 23.54839],
+        [55.14212, 23.58163],
+    ],
+    { title: 'TMA KAUNAS A', opacity: 0.5, fillOpacity: 0, color: '#a12323' }
+).addTo(tma)
+
+polygon.bindPopup(
+    '<b>TMA KAUNAS SECTOR A</b><br>ACCL 1200 MSL = 1200 ft ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b> <br>124.200 MHz KAUNAS TWR, <br>118.505 MHz KAUNAS TWR (ALT), <br>129.050 MHz KAUNAS ATIS<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMRG <br><b>Call sign:</b> KAUNAS TOWER<br>'
+)
+var polygon = L.polygon(
+    [
+        [55.46417, 23.8125],
+        [55.34444, 24.63694],
+        [55.25016, 24.64481],
+        [55.2848, 23.79598],
+        [55.25396, 23.37065],
+        [54.99576, 23.24465],
+        [54.78437, 23.3625],
+        [54.62849, 23.58123],
+        [54.7109, 24.01196],
+        [54.69529, 24.41831],
+        [54.588179, 24.159622],
+        [54.48958, 23.32414],
+        [55.07109, 22.9676],
+        [55.4193, 23.12488],
+    ],
+    { title: 'TMA KAUNAS C', opacity: 0.5, color: '#a12323' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA KAUNAS SECTOR C</b><br>ACCL FL065 = 6500 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b> <br>124.200 MHz KAUNAS TWR, <br>118.505 MHz KAUNAS TWR (ALT), <br>129.050 MHz KAUNAS ATIS<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMRG <br><b>Call sign:</b> KAUNAS TOWER<br>'
+)
+var polygon = L.polygon(
+    [
+        [55.02972, 23.74138],
+        [55.06305, 24.40305],
+        [54.89638, 24.42805],
+        [54.87472, 23.99138],
+        [54.92472, 23.75638],
+    ],
+    { title: '120m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 120 m zone')
+var polygon = L.polygon(
+    [
+        [54.99801, 24.19239],
+        [55.01037, 24.27304],
+        [54.93675, 24.28364],
+        [54.94063, 24.20087],
+    ],
+    { title: '50m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 50 m zone')
+var polygon = L.polygon(
+    [
+        [54.9087, 23.89587],
+        [54.99972, 23.88135],
+        [54.99468, 23.96764],
+        [54.92219, 23.97859],
+    ],
+    { title: '40m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 40 m zone')
+var polygon = L.polygon(
+    [
+        [54.99468, 23.96764],
+        [54.99258, 24.00278],
+        [54.99648, 24.00983],
+        [54.99952, 24.01687],
+        [55.00233, 24.02534],
+        [55.00431, 24.03343],
+        [55.00575, 24.04187],
+        [55.00662, 24.05054],
+        [55.00692, 24.05933],
+        [55.00767, 24.06955],
+        [55.00826, 24.0814],
+        [55.00915, 24.10543],
+        [55.00942, 24.11151],
+        [55.00896, 24.12125],
+        [55.00794, 24.12987],
+        [55.00682, 24.13678],
+        [55.00548, 24.14175],
+        [55.00397, 24.14708],
+        [55.00161, 24.15374],
+        [54.99994, 24.15768],
+        [54.99775, 24.16214],
+        [54.99455, 24.16763],
+        [54.99801, 24.19239],
+        [54.94063, 24.20087],
+        [54.94176, 24.17533],
+        [54.93483, 24.05497],
+        [54.92219, 23.97859],
+    ],
+    { title: '30m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 30 m zone')
+var polygon = L.polygon(
+    [
+        [54.96961, 24.02942],
+        [54.97488, 24.13766],
+        [54.9583, 24.14012],
+        [54.95294, 24.03192],
+    ],
+    { title: '0m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 0 m zone')
+var polygon = L.polygon(
+    [
+        [54.92777, 24.01219],
+        [54.92576, 24.01702],
+        [54.92429, 24.02118],
+        [54.92272, 24.02637],
+        [54.92119, 24.03266],
+        [54.9183, 24.0401],
+        [54.91884, 24.04872],
+        [54.91844, 24.05649],
+        [54.91883, 24.0652],
+        [54.91922, 24.0767],
+        [54.921, 24.10846],
+        [54.92103, 24.11573],
+        [54.9218, 24.12539],
+        [54.92309, 24.13389],
+        [54.92469, 24.14118],
+        [54.927, 24.14899],
+        [54.92914, 24.15473],
+        [54.93156, 24.16011],
+        [54.93633, 24.1684],
+        [54.94176, 24.17533],
+        [54.93483, 24.05497],
+    ],
+    { title: '40m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('KAUNAS 40 m zonE')
+//ŠIAULIAI
+var polygon = L.polygon(
+    [
+        [55.4193, 23.12488],
+        [55.93505, 22.66524],
+        [56.32024, 23.04522],
+        [56.32453, 23.07005],
+        [56.31745, 23.08509],
+        [56.30478, 23.09324],
+        [56.30806, 23.11513],
+        [56.32678, 23.14599],
+        [56.33749, 23.18398],
+        [56.34241, 23.18395],
+        [56.34478, 23.17597],
+        [56.35458, 23.17228],
+        [56.35843, 23.18129],
+        [56.36683, 23.16987],
+        [56.36878, 23.17734],
+        [56.37193, 23.2825],
+        [56.38286, 23.30705],
+        [56.37915, 23.38763],
+        [56.37135, 23.40787],
+        [56.37064, 23.41851],
+        [56.35173, 23.43907],
+        [56.34781, 23.481],
+        [56.34487, 23.49329],
+        [56.33564, 23.51055],
+        [56.33232, 23.54457],
+        [56.35948, 23.62874],
+        [56.3648, 23.6614],
+        [56.36618, 23.70399],
+        [56.37032, 23.71873],
+        [56.36923, 23.74212],
+        [56.37408, 23.7646],
+        [56.35124, 23.77191],
+        [56.32371, 23.76677],
+        [56.32054, 23.78152],
+        [56.34227, 23.8139],
+        [56.33815, 23.82912],
+        [56.33835, 23.84262],
+        [55.69527, 24.09694],
+        [55.46417, 23.8125],
+    ],
+    { title: 'TMA ŠIAULIAI', opacity: 0.5, color: '#6a11bd' }
+).addTo(tma)
+
+polygon.bindPopup(
+    '<b>TMA ŠIAULIAI</b><br>ACCL 3000 MSL = 3000 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b> <br>120.400 MHz ŠIAULIAI TWR<br>120.750 MHz ŠIAULIAI ATIS<br>124.450 ŠIAULIAI INFO<br>121.500 MHz EMRG <br><b>Call sign:</b> ŠIAULIAI TOWER<br>'
+)
+var polygon = L.polygon(
+    [
+        [55.80553, 23.74903],
+        [55.75552, 23.71561],
+        [55.65007, 23.43676],
+        [55.83387, 23.21459],
+        [56.00671, 23.00772],
+        [56.13741, 23.35236],
+    ],
+    { title: '120m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 120 m zone')
+var polygon = L.polygon(
+    [
+        [55.80486, 23.25099],
+        [55.79694, 23.26424],
+        [55.78594, 23.28773],
+        [55.77743, 23.31243],
+        [55.77038, 23.34204],
+        [55.76633, 23.37007],
+        [55.76448, 23.40204],
+        [55.76524, 23.43094],
+        [55.76665, 23.44683],
+         [55.77035, 23.4717],
+        [55.77782, 23.50275],
+        [55.78701, 23.53023],
+        [55.79746, 23.55258],
+        [55.80745, 23.56906],
+        [55.81847, 23.58334],
+        [55.82954, 23.59452],
+        [55.84123, 23.60346],
+        [55.85429, 23.61044],
+        [55.86592, 23.61424],
+        [55.88043, 23.616],
+        [55.89405, 23.61468],
+        [55.90748, 23.61051],
+        [55.9214, 23.60298],
+        [55.93866, 23.58848],
+        [55.97916, 23.53985],
+        [55.99056, 23.52121],
+        [55.99827, 23.50521],
+        [56.0055, 23.48649],
+        [56.01372, 23.45753],
+        [56.01915, 23.4345],
+        [56.02116, 23.40907],
+        [56.02237, 23.37992],
+        [56.02124, 23.35076],
+        [56.01807, 23.32374],
+        [56.01216, 23.29476],
+        [56.00288, 23.26497],
+        [55.99098, 23.23834],
+        [55.97677, 23.21559],
+        [55.95658, 23.19371],
+        [55.93346, 23.17915],
+        [55.90661, 23.17252],
+        [55.88052, 23.17687],
+        [55.85566, 23.19157],
+        [55.8387, 23.21459],
+    ],
+    { title: '110m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 110 m zone')
+var polygon = L.polygon(
+    [
+        [55.78221, 23.42074],
+        [55.79168, 23.46996],
+        [55.81528, 23.54541],
+        [55.85893, 23.48471],
+        [55.82757, 23.40214],
+    ],
+    { title: '60m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 60 m zone')
+polygon.bindPopup('ŠIAULIAI 110 m zone')
+var polygon = L.polygon(
+    [
+        [55.85893, 23.48471],
+        [55.82757, 23.40215],
+        [55.92258, 23.29442],
+        [55.95446, 23.37636],
+        [55.92708, 23.41304],
+        [55.89504, 23.45338],
+    ],
+    { title: '30m zona', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 30 m zone')
+var polygon = L.polygon(
+    [
+        [55.91484, 23.34731],
+        [55.92535, 23.37514],
+        [55.87163, 23.43937],
+        [55.86113, 23.41156],
+    ],
+    { title: '0m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 0 m zone')
+var polygon = L.polygon(
+    [
+        [55.92258, 23.29442],
+        [55.95681, 23.22674],
+        [56.00455, 23.33034],
+        [55.95446, 23.37636],
+    ],
+    { title: '60m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('ŠIAULIAI 60 m zone')
+//PALANGA
+var polygon = L.polygon(
+    [
+        [55.69499, 21.38526],
+        [56.12352, 21.45499],
+        [56.1551, 21.2287],
+        [56.14862, 21.22656],
+        [56.142, 21.23246],
+        [56.14035, 21.22816],
+        [56.13632, 21.23127],
+        [56.13548, 21.23436],
+        [56.1334, 21.23655],
+        [56.12351, 21.23837],
+        [56.11587, 21.23517],
+        [56.1088, 21.22058],
+        [56.09032, 21.21157],
+        [56.07692, 21.20174],
+        [56.07509, 21.18151],
+        [56.08643, 21.16188],
+        [56.08402, 21.14554],
+        [56.07965, 21.13892],
+        [56.06916, 21.06444],
+        [56.06728, 20.74773],
+        [55.76999, 20.6833],
+    ],
+    { title: 'TMA PALANGA A', opacity: 0.5, color: '#ede209' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA PALANGA SECTOR A</b><br>ACCL 800 MSL = 800 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>124.300 MHz PALANGA TWR<br>118.300 MHz PALAGA TWR (ALT)<br>127.800 MHz PALANGA ATIS<br>125.725 MHz PALANGA INFO<br>121.500 MHz EMERG <br><b>Call sign:</b> PALANGA TOWER<br>'
+) // atveria lentelę ant poligono
+
+var polygon = L.polygon(
+    [
+        [55.69499, 21.38526],
+        [56.12352, 21.45499],
+        [56.1551, 21.2287],
+        [56.16252, 21.23112],
+        [56.16824, 21.25772],
+        [56.17963, 21.2828],
+        [56.1888, 21.28801],
+        [56.19184, 21.29861],
+        [56.21868, 21.32895],
+        [56.22756, 21.37684],
+        [56.24239, 21.4165],
+        [56.24065, 21.43156],
+        [56.24863, 21.45201],
+        [56.26026, 21.46503],
+        [56.27075, 21.46714],
+        [56.28896, 21.49186],
+        [56.29553, 21.50181],
+        [56.28972, 21.51366],
+        [56.29439, 21.52602],
+        [56.2981, 21.54318],
+        [56.31068, 21.55456],
+        [55.93526, 21.90944],
+        [55.64637, 21.64277],
+        [55.65831, 20.52583],
+        [55.89776, 20.32027],
+        [56.09051, 20.49341],
+        [56.06728, 20.74773],
+        [55.76999, 20.6833],
+    ],
+    { title: 'TMA PALANGA B', opacity: 0.5, color: '#ede209' }
+).addTo(tma)
+
+polygon.bindPopup(
+    '<b>TMA PALANGA SECTOR B</b><br>ACCL 2000 MSL = 2000 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>124.300 MHz PALANGA TWR<br>118.300 MHz PALANGA TWR (ALT)<br>127.800 MHz PALANGA ATIS<br>125.725 MHz PALANGA INFO<br>121.500 MHz EMERG <br><b>Call sign:</b> PALANGA TOWER<br>'
+) // atveria lentelę ant poligono
+var polygon = L.polygon(
+    [
+        [56.09051, 20.49341],
+        [56.12674, 20.22699],
+        [55.80972, 20.0225],
+        [55.57444, 20.24277],
+        [55.55972, 21.92222],
+        [55.89833, 22.25416],
+        [56.37001, 21.84863],
+        [56.37155, 21.836],
+        [56.36482, 21.82454],
+        [56.36248, 21.80774],
+        [56.34369, 21.78722],
+        [56.3375, 21.75745],
+        [56.31368, 21.72403],
+        [56.31157, 21.67279],
+        [56.32505, 21.60982],
+        [56.31476, 21.5779],
+        [56.31648, 21.56162],
+        [56.31068, 21.55456],
+        [55.93526, 21.90944],
+        [55.64637, 21.64277],
+        [55.65831, 20.52583],
+        [55.89776, 20.32027],
+    ],
+    { title: 'TMA PALANGA C', opacity: 0.5, color: '#ede209' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA PALANGA SECTOR C</b><br>ACCL FL065 = 6500 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>124.300 MHz PALANGA TWR<br>118.300 MHz PALANGA TWR (ALT)<br>127.800 MHz PALANGA ATIS<br>125.725 MHz PALANGA INFO<br>121.500 MHz EMERG <br><b>Call sign:</b> PALANGA TOWER<br>'
+) // atveria lentelę ant poligono
+// SUKURIAMI ORO UOSTŲ SKRYDŽIO AUKŠČIAI SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMI PRIE ALTITUDE SLUOKSNIO
+var polygon = L.polygon(
+    [
+        [56.08762, 21.22791],
+        [56.09032, 21.21157],
+        [56.1088, 21.22058],
+        [56.11587, 21.23517],
+        [56.14862, 21.22656],
+        [56.1551, 21.2287],
+        [56.143, 21.31531],
+        [55.76633, 21.16211],
+        [55.80296, 20.87307],
+        [56.06874, 20.981],
+        [56.06909, 21.06028],
+        [56.05262, 21.05887],
+        [56.04866, 21.05852],
+        [56.04619, 21.04713],
+        [56.04154, 21.03151],
+        [56.0357, 21.01722],
+        [56.02717, 21.00208],
+        [56.01731, 20.98979],
+        [56.00575, 20.98027],
+        [55.99111, 20.97354],
+        [55.97498, 20.96705],
+        [55.96087, 20.96533],
+        [55.94617, 20.969],
+        [55.93352, 20.97703],
+        [55.92139, 20.98997],
+        [55.90958, 21.00985],
+        [55.88467, 20.99257],
+        [55.86863, 21.11613],
+        [55.89517, 21.11868],
+        [55.89671, 21.12838],
+        [55.89953, 21.1413],
+        [55.90208, 21.1503],
+        [55.90624, 21.16202],
+        [55.91063, 21.1719],
+        [55.91557, 21.18094],
+        [55.92042, 21.18828],
+        [55.92504, 21.19412],
+        [55.92867, 21.19806],
+        [55.93761, 21.20566],
+        [55.945, 21.21001],
+        [55.9589, 21.21479],
+        [55.96744, 21.21905],
+        [55.97808, 21.22203],
+        [55.98799, 21.22187],
+        [56.00325, 21.21659],
+        [56.01183, 21.21067],
+        [56.02284, 21.19925],
+        [56.03238, 21.18468],
+        [56.03571, 21.18719],
+    ],
+    { title: '120m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 120 m zone')
+var polygon = L.polygon(
+    [
+        [56.09032, 21.21157],
+        [56.08762, 21.22791],
+        [56.03571, 21.18719],
+        [56.05262, 21.05887],
+        [56.06909, 21.06028],
+        [56.06916, 21.06444],
+        [56.07965, 21.13892],
+        [56.08402, 21.14554],
+        [56.08643, 21.16188],
+        [56.07509, 21.18151],
+        [56.07692, 21.20174],
+    ],
+    { title: '40m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 40 m zone')
+var polygon = L.polygon(
+    [
+        [56.04866, 21.05852],
+        [56.04619, 21.04713],
+        [56.04154, 21.03151],
+        [56.0357, 21.01722],
+        [56.02717, 21.00208],
+        [56.01731, 20.98979],
+        [56.00575, 20.98027],
+        [55.99111, 20.97354],
+        [55.97498, 20.96705],
+        [55.96087, 20.96533],
+        [55.94617, 20.969],
+        [55.93352, 20.97703],
+        [55.92139, 20.98997],
+        [55.90958, 21.00985],
+        [55.92376, 21.02301],
+        [55.95271, 21.04356],
+        [55.96005, 21.04027],
+        [55.96629, 21.04029],
+        [55.9754, 21.0441],
+        [55.9873, 21.04822],
+        [56.00115, 21.05434],
+    ],
+    { title: '100m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 100 m zone')
+var polygon = L.polygon(
+    [
+        [55.89517, 21.11868],
+        [55.89671, 21.12838],
+        [55.89953, 21.1413],
+        [55.90208, 21.1503],
+        [55.90624, 21.16202],
+        [55.91063, 21.1719],
+        [55.91557, 21.18094],
+        [55.92042, 21.18828],
+        [55.92504, 21.19412],
+        [55.92867, 21.19806],
+        [55.93761, 21.20566],
+        [55.945, 21.21001],
+        [55.9589, 21.21479],
+        [55.96744, 21.21905],
+        [55.97808, 21.22203],
+        [55.98799, 21.22187],
+        [56.00325, 21.21659],
+        [56.01183, 21.21067],
+        [56.02284, 21.19925],
+        [56.03238, 21.18468],
+        [55.98671, 21.15021],
+        [55.96428, 21.14063],
+        [55.95032, 21.13405],
+        [55.94547, 21.12839],
+        [55.94166, 21.12169],
+        [55.91127, 21.12008],
+    ],
+    { title: '110m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 100 m zone')
+var polygon = L.polygon(
+    [
+        [55.88467, 20.99257],
+        [55.86863, 21.11613],
+        [55.89517, 21.11868],
+        [55.91127, 21.12008],
+        [55.92376, 21.02301],
+        [55.90958, 21.00985],
+    ],
+    { title: '45m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 50 m zone')
+var polygon = L.polygon(
+    [
+        [55.92376, 21.02301],
+        [55.91127, 21.12008],
+        [55.94166, 21.12169],
+        [55.94547, 21.12839],
+        [55.95032, 21.13405],
+        [55.96428, 21.14063],
+        [55.98671, 21.15021],
+        [56.03238, 21.18468],
+        [56.03571, 21.18719],
+        [56.05262, 21.05887],
+        [56.04866, 21.05852],
+        [56.00115, 21.05434],
+        [55.9873, 21.04822],
+        [55.9754, 21.0441],
+        [55.96629, 21.04029],
+        [55.96005, 21.04027],
+        [55.95271, 21.04356],
+        [55.95189, 21.04417],
+    ],
+    { title: '30m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 30 m zone')
+var polygon = L.polygon(
+    [
+        [55.94505, 21.0977],
+        [55.99746, 21.11884],
+        [56.00113, 21.08989],
+        [55.94872, 21.06879],
+    ],
+    { title: '0m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('PALANGA 0 m zone')
+//VILNIUS
+var polygon = L.polygon(
+    [
+        [54.1194, 24.76824],
+        [54.69529, 24.41831],
+        [54.800556, 24.688889],
+        [55.17853, 24.64538],
+        [55.22175, 25.67757],
+        [54.9976, 25.74081],
+        [54.93126, 25.87243],
+        [54.94405, 24.96716],
+        [54.48563, 24.79644],
+        [54.2638, 25.22558],
+        [54.25762, 25.20932],
+        [54.24146, 25.20585],
+        [54.23876, 25.19999],
+        [54.22126, 25.19492],
+        [54.21915, 25.19155],
+        [54.21584, 25.19155],
+        [54.20951, 25.18018],
+        [54.20716, 25.17147],
+        [54.20578, 25.17089],
+        [54.20093, 25.15552],
+        [54.19308, 25.15728],
+        [54.18821, 25.14019],
+        [54.18548, 25.13804],
+        [54.18531, 25.13406],
+        [54.15189, 25.08898],
+        [54.14756, 25.08598],
+        [54.14599, 25.08161],
+        [54.14442, 25.0719],
+        [54.13585, 25.068],
+        [54.13924, 25.04971],
+        [54.13798, 25.02386],
+        [54.13898, 25.01097],
+        [54.14246, 25.00597],
+        [54.14414, 24.99303],
+        [54.14897, 24.98431],
+        [54.15555, 24.98278],
+    ],
+    { title: 'TMA VILNIUS B', opacity: 0.5, color: '#1e8546' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA VILNIUS SECTOR B</b><br>ACCL 3000 MSL = 3000 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>118.200 MHz VILNIUS TWR<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG<br><b>Call sign:</b> VILNIUS TOWER'
+)
+var polygon = L.polygon(
+    [
+        [54.69529, 24.41831],
+        [54.588179, 24.159622],
+        [54.15689, 24.40893],
+        [54.11733, 24.77382],
+    ],
+    { title: '<b>TMA VILNIUS D', opacity: 0.5, color: '#1e8546' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA VILNIUS SECTOR D</b><br>ACCL FL065 = 6500 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>118.200 MHz VILNIUS TWR<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG<br><b>Call sign:</b> VILNIUS TOWER'
+)
+var polygon = L.polygon(
+    [
+        [55.22016, 25.68303],
+        [55.45693, 25.61468],
+        [55.47961, 24.97779],
+        [55.34444, 24.63694],
+        [55.17694, 24.65086],
+    ],
+    { title: 'TMA VILNIUS C', opacity: 0.5, color: '#1e8546' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA VILNIUS SECTOR C</b><br>ACCL FL065 = 6500 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>118.200 MHz VILNIUS TWR<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG<br><b>Call sign:</b> VILNIUS TOWER'
+)
+var polygon = L.polygon(
+    [
+        [54.2638, 25.22558],
+        [54.25141, 25.25095],
+        [54.27434, 25.26899],
+        [54.26474, 25.28768],
+        [54.26461, 25.34357],
+        [54.30797, 25.49693],
+        [54.28102, 25.5204],
+        [54.27468, 25.56147],
+        [54.22585, 25.58472],
+        [54.22864, 25.54985],
+        [54.22134, 25.5488],
+        [54.20174, 25.56251],
+        [54.17753, 25.51226],
+        [54.14792, 25.55294],
+        [54.12842, 25.6501],
+        [54.13792, 25.65898],
+        [54.14167, 25.68166],
+        [54.16841, 25.70162],
+        [54.154, 25.78405],
+        [54.19377, 25.78039],
+        [54.21502, 25.75156],
+        [54.23364, 25.78586],
+        [54.27205, 25.74516],
+        [54.27162, 25.71285],
+        [54.28043, 25.69873],
+        [54.29685, 25.71061],
+        [54.32395, 25.67724],
+        [54.31498, 25.55248],
+        [54.36378, 25.56197],
+        [54.37537, 25.59374],
+        [54.42155, 25.63159],
+        [54.50824, 25.65695],
+        [54.54363, 25.69867],
+        [54.57422, 25.75918],
+        [54.67624, 25.73415],
+        [54.80033, 25.73384],
+        [54.82337, 25.77346],
+        [54.89584, 25.85068],
+        [54.93126, 25.87243],
+        [54.94405, 24.96716],
+        [54.48563, 24.79644],
+    ],
+    { title: 'TMA VILNIUS A', opacity: 0.5, color: '#1e8546' }
+).addTo(tma)
+polygon.bindPopup(
+    '<b>TMA VILNIUS SECTOR A</b><br>ACCL 1700 MSL = 1700 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b><br>118.200 MHz VILNIUS TWR<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG<br><b>Call sign:</b> VILNIUS TOWER'
+)
+var polygon = L.polygon(
+    [
+        [54.8439, 25.28202],
+        [54.78204, 25.54947],
+        [54.42172, 25.29857],
+        [54.48302, 25.03309],
+    ],
+    { title: '120m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 120 m zone')
+var polygon = L.polygon(
+    [
+        [54.74831, 25.28178],
+        [54.74787, 25.33844],
+        [54.73066, 25.41262],
+        [54.67365, 25.35302],
+        [54.68311, 25.31225],
+        [54.68327, 25.28176],
+        [54.67172, 25.26907],
+    ],
+    { title: '40m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 40 m zone')
+var polygon = L.polygon(
+    [
+        [54.63707, 25.23117],
+        [54.63707, 25.20582],
+        [54.63429, 25.20447],
+        [54.63164, 25.2035],
+        [54.62941, 25.2029],
+        [54.62774, 25.20258],
+        [54.62578, 25.20236],
+        [54.6238, 25.20227],
+        [54.62211, 25.20232],
+        [54.6196, 25.20261],
+        [54.6181, 25.20289],
+        [54.61651, 25.20329],
+        [54.61295, 25.20482],
+    ],
+    { title: '50m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 50 m zone')
+var polygon = L.polygon(
+    [
+        [54.63707, 25.20582],
+        [54.63429, 25.20447],
+        [54.63164, 25.2035],
+        [54.62941, 25.2029],
+        [54.62774, 25.20258],
+        [54.62578, 25.20236],
+        [54.6238, 25.20227],
+        [54.62211, 25.20232],
+        [54.6196, 25.20261],
+        [54.6181, 25.20289],
+        [54.61651, 25.20329],
+        [54.61295, 25.20482],
+        [54.58679, 25.17634],
+        [54.59103, 25.17214],
+        [54.59648, 25.16841],
+        [54.60075, 25.16483],
+        [54.60549, 25.1623],
+        [54.61032, 25.16037],
+        [54.61662, 25.15875],
+        [54.62227, 25.15814],
+        [54.62723, 25.15826],
+        [54.63217, 25.15899],
+        [54.63706, 25.16031],
+    ],
+    { title: '90m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 90 m zone')
+
+var polygon = L.polygon(
+    [
+        [54.54241, 25.12831],
+        [54.5976, 25.18807],
+        [54.56829, 25.31463],
+        [54.50412, 25.29144],
+    ],
+    { title: '60m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 60 m zone')
+polygon.bindPopup('VILNIUS 90 m zone')
+var polygon = L.polygon(
+    [
+        [54.5975, 25.18807],
+        [54.56829, 25.31463],
+        [54.67365, 25.35302],
+        [54.68311, 25.31225],
+        [54.68327, 25.28176],
+    ],
+    { title: '30m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 30 m zone')
+var polygon = L.polygon(
+    [
+        [54.66623, 25.29267],
+        [54.66012, 25.31916],
+        [54.60517, 25.28116],
+        [54.61137, 25.25456],
+    ],
+    { title: '0m zona', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 0 m zone')
+var polygon = L.polygon(
+    [
+        [54.58714, 25.32148],
+        [54.58854, 25.32482],
+        [54.59032, 25.32858],
+        [54.59242, 25.33228],
+        [54.59469, 25.33611],
+        [54.59762, 25.34009],
+        [54.60204, 25.34503],
+        [54.60869, 25.35028],
+        [54.61428, 25.35412],
+        [54.62029, 25.35824],
+        [54.62682, 25.36289],
+        [54.63262, 25.36648],
+        [54.63921, 25.36877],
+        [54.64425, 25.36934],
+        [54.64929, 25.36892],
+        [54.65372, 25.36772],
+        [54.65806, 25.36575],
+        [54.66174, 25.36242],
+        [54.66528, 25.36052],
+        [54.66914, 25.35658],
+        [54.67234, 25.35254],
+    ],
+    { title: '40m zone', opacity: 1, color: 'black', fillOpacity: 0 }
+).addTo(altitude)
+polygon.bindPopup('VILNIUS 40 m zone')
+// SUKURIAMOS LAIKINAI IŠSKIRTOS ZONOS SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMOS PRIE TSA SLUOKSNIO
+var polygon = L.polygon(
+    [
+        [54.74464, 25.52329],
+        [54.71916, 25.63555],
+        [54.63305, 25.69805],
+        [54.58777, 25.53583],
+        [54.61741, 25.43448],
+    ],
+    { title: 'EYTSA1', opacity: 1, color: '#02eba5', fillOpacity: 0.2 }
+).addTo(tsa)
+
+polygon.bindPopup(
+    '<b>EYTSA1</b><br>KYVIŠKĖS<br>ACCL 1700 MSL = 1700 ft<br>ACCU FL110 = 11000 ft<br><b>Frequencies:</b><br>122.850 MHz KYVIŠKĖS RADIO<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [54.89579, 23.8924],
+        [54.88203, 23.95717],
+        [54.83194, 23.94749],
+        [54.81305, 23.90416],
+        [54.81166, 23.82444],
+        [54.83055, 23.76916],
+        [54.88805, 23.76305],
+    ],
+    { title: 'EYTSA2', opacity: 1, color: '#02eba5', fillOpacity: 0.2 }
+).addTo(tsa)
+
+polygon.bindPopup(
+    '<b>EYTSA2</b><br>ALEKSOTAS<br>ACCL 1200 MSL = 1200 ft<br>ACCU 4000 MSL = 4000 ft<br><b>Frequencies:</b><br>135.500 MHz KYVIŠKĖS RADIO<br>129.050 MHz KAUNAS ATIS<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [56.26969, 23.06267],
+        [56.18484, 23.9037],
+        [55.69527, 24.09694],
+        [55.48888, 23.44888],
+        [55.90138, 22.76972],
+    ],
+    { title: 'EYTSA5', opacity: 1, color: '#02eba5', fillOpacity: 0.2 }
+).addTo(tsa)
+polygon.bindPopup(
+    '<b>EYTSA5</b><br>ŠIAULIAI<br>ACCL FL075 = 7500 ft<br>ACCU FL130 = 13000 ft<br><b>Frequencies:</b> <br>120.400 MHz ŠIAULIAI TWR<br>120.750 MHz ŠIAULIAI ATIS<br>124.450 ŠIAULIAI INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [54.68435, 23.86726],
+        [54.7109, 24.01196],
+        [54.70291, 24.22447],
+        [54.619024, 24.23396],
+        [54.588179, 24.159622],
+        [54.560204, 23.921704],
+    ],
+    { title: 'EYTSA6', opacity: 1, color: '#02eba5', fillOpacity: 0.2 }
+).addTo(tsa)
+polygon.bindPopup(
+    '<b>EYTSA6</b><br>POCIŪNAI<br>ACCL FL065 = 6500 ft<br>ACCU FL150 = 15000 ft<br><b>Frequencies:</b> <br>119.000 MHz POCIŪNAI RADIO<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [54.843604835, 23.1033],
+        [54.634569, 23.229031],
+        [54.800423673, 23.582994341],
+        [54.83903, 23.5312559],
+        [54.8514, 23.47358238],
+        [54.8436, 23.1033057],
+    ],
+    { title: 'EYTSA7', opacity: 1, color: '#02eba5', fillOpacity: 0.2 }
+).addTo(tsa)
+polygon.bindPopup(
+    '<b>EYTSA7</b><br>ACCL FL065 = 6500 ft<br>ACCU FL095 = 9500 ft<br><b>Frequencies:</b> <br>124.200 MHz KAUNAS TWR<br>124.600 MHz KAUNAS INFO<br>121.500 MHz EMERG'
+)
+// SUKURIAMOS SPECIALIOS SKLANDYMO ZONOS SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMA PRIE SGZ SLUOKSNIO
+var polygon = L.polygon(
+    [
+        [54.48763, 24.91119],
+        [54.46561, 24.98014],
+        [54.33232, 25.16821],
+        [54.23359, 25.04573],
+        [54.23974, 24.94512],
+        [54.20223, 24.72324],
+        [54.41284, 24.59303],
+    ],
+    { title: 'PALUKNYS', opacity: 1, color: '#fcba03', fillOpacity: 0.2 }
+).addTo(sgz)
+polygon.bindPopup(
+    '<b>PALUKNYS SGZ</b><br>ACCL GND = 0 ft<br>ACCU FL065 = 6500 ft<br><b>Frequencies:</b><br>119.100 MHz PALUKNYS RADIO<br>125.800 MHz VILNIUS ATIS<br>123.850 MHz VILNIUS INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [56, 22.11583],
+        [55.73388, 22.15138],
+        [55.58583, 21.80166],
+        [55.71833, 21.47833],
+        [55.92, 21.47138],
+        [56, 21.70472],
+    ],
+    { title: 'KARTENA', opacity: 1, color: '#fcba03', fillOpacity: 0.2 }
+).addTo(sgz)
+polygon.bindPopup(
+    '<b>KARTENA SGZ</b><br>ACCL GND = 0 ft<br>ACCU FL065 = 6500 ft<br><b>Frequencies:</b><br>123.250 MHz KARTENA RADIO<br>127.800 MHz PALANGA ATIS<br>125.735 MHz PALANGA INFO<br>121.500 MHz EMERG'
+)
+var polygon = L.polygon(
+    [
+        [56.085, 23.94361],
+        [55.80555, 24.05388],
+        [55.74347, 24.17489],
+        [55.5564, 24.09717],
+        [55.64284, 23.92893],
+        [55.75346, 23.77271],
+        [56.08722, 23.87361],
+    ],
+    { title: 'ŠEDUVA', opacity: 1, color: '#fcba03', fillOpacity: 0.2 }
+).addTo(sgz)
+
+polygon.bindPopup(
+    '<b>ŠEDUVA SGZ</b><br>ACCL GND = 0 ft<br>ACCU FL065 = 6500 ft<br><b>Frequencies:</b><br>120.025 MHz ŠEDUVA RADIO<br>120.750 MHz SIAULIAI ATIS<br>124.450 MHz ŠIAULIAI INFO<br>121.500 MHz EMERG'
+)
+// SUKURIAMA SKRYDŽIO INFORMACIJOS REGIONAI SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMI PRIE FIR SLUOKSNIO
+var polyline = new L.Polyline(
+    [
+        [55.99998, 25.86663],
+        [55.51424, 24.61996],
+    ],
+    { color: '#0523e3', weight: 3, opacity: 0.5 }
+).addTo(fir)
+polyline.bindPopup(
+    '<b>FIR ŠIAULIAI - FIR VILNIUS</b><br>ŠIAULIAI INFO 124.450 MHz <br>VILNIUS INFO 123.850 MHz'
+)
+var polyline = new L.Polyline(
+    [
+        [55.51424, 24.61996],
+        [54.800556, 24.688889],
+        [54.588179, 24.159622],
+        [53.95491, 24.14408],
+    ],
+    { color: '#0523e3', weight: 3, opacity: 0.5 }
+).addTo(fir)
+polyline.bindPopup(
+    '<b>FIR VILNIUS - FIR KAUNAS</b><br>VILNIUS INFO 123.850 MHz<br>KAUNAS INFO 124.600 MHz'
+)
+var polyline = new L.Polyline(
+    [
+        [55.51424, 24.61996],
+        [55.4662, 22.68229],
+    ],
+    { color: '#0523e3', weight: 3, opacity: 0.5 }
+).addTo(fir)
+polyline.bindPopup(
+    '<b>FIR ŠIAULIAI - FIR KAUNAS</b><br>ŠIAULIAI INFO 124.450 MHz<br>KAUNAS INFO 124.600 MHz'
+)
+var polyline = new L.Polyline(
+    [
+        [55.4662, 22.68229],
+        [56.39573, 22.35571],
+    ],
+    { color: '#0523e3', weight: 3, opacity: 0.5 }
+).addTo(fir)
+polyline.bindPopup(
+    '<b>FIR ŠIAULIAI - FIR PALANGA</b><br>ŠIAULIAI INFO 124.450 MHz<br>PALANGA INFO 125.725 MHz'
+)
+var polyline = new L.Polyline(
+    [
+        [55.4662, 22.68229],
+        [55.0694, 22.59241],
+    ],
+    { color: '#0523e3', weight: 3, opacity: 0.5 }
+).addTo(fir)
+polyline.bindPopup(
+    '<b>FIR PALANGA - FIR KAUNAS</b><br>PALANGA INFO 125.725 MHz MHz<br>KAUNAS INFO 124.600 MHz'
+)
+// SUKURIAMI RADARAI SU IŠŠOKANČIAIS LANGAIS IR PRIDEDAMI PRIE RADAR SLUOKSNIO
+var marker75 = L.marker([54.96027778, 24.06638889], {
+    title: 'KAUNAS DVOR',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>KAUNAS DVOR/DME</b><br><b>ID:</b> KNA<br><b>Coordinates:</b> N54.57374, E24.03591<br><b>Frequency:</b> 114.400 MHz<br><b>Altitude:</b> 300 ft<br><b>Coverage:</b> 100 NM'
+    )
+var circle = L.circle([54.57374, 24.03591], {
+    radius: 185200,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker76 = L.marker([54.96572, 24.12186], {
+    title: 'KAUNAS NDB',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>KAUNAS NDB</b><br><b>ID:</b> KUS<br><b>Coordinates:</b> N54.96572, E24.12186<br><b>Frequency:</b> 343 kHz<br>'
+    )
+var marker77 = L.marker([55.72558, 21.24372], {
+    title: 'KLAIPEDA DVOR',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>KLAIPĖDA DVOR/DME</b><br><b>ID:</b> KLP<br><b>Coordinates:</b> N55.72558, E21.24372<br><b>Frequency:</b> 115.000 MHz<br><b>Altitude:</b> 100 ft<br><b>Coverage:</b> 80 NM'
+    )
+var circle = L.circle([55.72558, 21.24372], {
+    radius: 148160,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker78 = L.marker([55.95653, 21.08706], {
+    title: 'PALANGA DME',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>PALANGA DME</b><br><b>ID:</b> PLG<br><b>Coordinates:</b> N55.95653, E21.08706<br><b>Frequency:</b> 114.800 MHz<br><b>Altitude:</b> 100 ft<br><b>Coverage:</b> 50 NM'
+    )
+var circle = L.circle([55.95653, 21.08706], {
+    radius: 92600,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker79 = L.marker([55.95642, 21.08703], {
+    title: 'PALANGA NDB',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>PALANGA NDB</b><br><b>ID:</b> PN<br><b>Coordinates:</b> N55.96542, E21.08703<br><b>Frequency:</b> 407 kHz<br>'
+    )
+
+var marker80 = L.marker([55.87906, 23.41639], {
+    title: 'ŠIAULIAI DME',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>ŠIAULIAI DVOR/DME</b><br><b>ID:</b> SAU<br><b>Coordinates:</b> N55.89047, E23.40239<br><b>Frequency:</b> 115.200 MHz<br><b>Aukštis:</b> 500 ft<br><b>Coverage:</b> 50 NM'
+    )
+var circle = L.circle([55.87906, 21.41639], {
+    radius: 92600,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker81 = L.marker([55.8904722, 23.40239], {
+    title: 'ŠIAULIAI TACAN',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>ŠIAULIAI TACAN</b><br><b>ID:</b> SQQ<br><b>Coordinates:</b> N55.8904722, E23.40239<br><b>Frequency:</b> 116.300 MHz<br><b>Aukštis:</b> 500 ft<br><b>Coverage:</b> 100 NM'
+    )
+var circle = L.circle([55.8904722, 23.40239], {
+    radius: 185200,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker82 = L.marker([54.63606, 25.29364], {
+    title: 'VILNIUS DVOR',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>VILNIUS DVOR/DME</b><br><b>ID:</b> VNO<br><b>Coordinates:</b> N54.63606, E25.29364<br><b>Frequency:</b> 113.800 MHz<br><b>Altitude:</b> 700 ft<br><b>Coverage:</b> 80 NM'
+    )
+var circle = L.circle([54.63606, 25.29364], {
+    radius: 148160,
+    color: '#de813a',
+    opacity: 0.3,
+}).addTo(radar)
+
+var marker83 = L.marker([54.68161, 25.31869], {
+    title: 'VILNIUS NDB',
+    icon: radarBlue,
+    opacity: 1,
+})
+    .addTo(radar)
+    .bindPopup(
+        '<b>VILNIUS NDB</b><br><b>ID:</b> AVN<br><b>Coordinates:</b> N54.68161, E25.91869<br><b>Frequency:</b> 385 kHz<br>'
+    )
+//BAZINIO SLUOKSNIO OBJEKTAS,KURIAME YRA ŽEMĖLAPIO IŠKLOTINĖ
+var baselayers = {
+    Layers: layer,
+}
+var overlays = { // OBJEKTAS Į KURĮ SUDEDAMI DUOMENŲ SLUOKSNIAI IR PRISKIRIAMI PAVADINIMAI JIEMS
+    'Control Waypoints': waypoints, 
+    'Flight Zones': tma,
+    'Airports Altitude Zones': altitude,
+    'FIR Sectors Boundaries': fir,
+    'Temporarily Excluded Zones (EYTSA)': tsa,
+    'Special Gliding Zones (SGZ)': sgz,
+    'Radionavigation ': radar,
+}
+L.control.layers(baselayers, overlays).addTo(mymap) //SLUOKSNIŲ VALDIKLIS
+// LIETUVOS TERITORIJOS APIBRĖŽIMUI IR PAŽYMĖJIMUI SKIRTI DUOMENYS
+const geo = {
+    type: 'FeatureCollection',
+    features: [
+        {
+            type: 'Feature',
+            geometry: {
+                type: 'MultiPolygon',
+                coordinates: [
+                    [
+                        [
+                            [20.988942905000073, 55.29132721600011],
+                            [20.989430696577955, 55.27311631266308],
+                            [20.92456870056236, 55.2826577786315],
+                            [20.99952233200011, 55.357001044000114],
+                            [21.041514519000117, 55.41608307500006],
+                            [21.082367384000065, 55.49762604400017],
+                            [21.09310957100007, 55.58169179900001],
+                            [21.09937584700012, 55.59870026200018],
+                            [21.09392337300008, 55.603461005000085],
+                            [21.09937584700012, 55.61298248900009],
+                            [21.090668165000125, 55.63312409100011],
+                            [21.09351647200006, 55.69554271000008],
+                            [21.085215691000087, 55.72284577000015],
+                            [21.11744225400014, 55.69977448100009],
+                            [21.131521030000073, 55.65558502800012],
+                            [21.133555535000113, 55.568304755000106],
+                            [21.131358269000117, 55.55573151200012],
+                            [21.122080925000144, 55.53900788],
+                            [21.119883660000085, 55.52704498900006],
+                            [21.119883660000085, 55.48944733300006],
+                            [21.10840905000012, 55.473089911000145],
+                            [21.092621290000068, 55.45661041900014],
+                            [21.087168816000144, 55.441066799000154],
+                            [21.10621178500014, 55.42743561400012],
+                            [21.10621178500014, 55.42121002800015],
+                            [21.091807488000057, 55.41071198100017],
+                            [21.073496941000116, 55.39179108300006],
+                            [21.057627800000088, 55.36945221600002],
+                            [21.05095462300011, 55.34886302300002],
+                            [21.03785241000014, 55.32859935099999],
+                            [20.988942905000073, 55.29132721600011],
+                        ],
+                    ],
+                    [
+                        [
+                            [24.910137980000115, 56.42195770299999],
+                            [24.936286255000113, 56.379918925000155],
+                            [24.96212447100004, 56.319276632000175],
+                            [24.973183228000035, 56.30075063100004],
+                            [24.983208456000085, 56.29049285900005],
+                            [25.016488077000105, 56.269899801000165],
+                            [25.02620324700007, 56.26018463200005],
+                            [25.04397994000007, 56.22799021400008],
+                            [25.07312544700011, 56.19781117800009],
+                            [25.109195597000106, 56.18308339500008],
+                            [25.45480757700011, 56.1496487430001],
+                            [25.522762085000068, 56.15657338500007],
+                            [25.57288822400008, 56.143034159000095],
+                            [25.590044800000044, 56.14112213099999],
+                            [25.64967940300005, 56.1438093070001],
+                            [25.66187504100006, 56.1408120730001],
+                            [25.66921309400007, 56.132027080000015],
+                            [25.68781661000011, 56.09833404600015],
+                            [25.69660160300009, 56.0878954060001],
+                            [25.708797241000127, 56.081048279000136],
+                            [25.766261434000114, 56.05864654600008],
+                            [25.871267944000067, 55.99213897700009],
+                            [26.017615600000113, 55.937361959000114],
+                            [26.07942061300011, 55.898139547000156],
+                            [26.178639364000077, 55.84958953900015],
+                            [26.20375411000009, 55.82744618700015],
+                            [26.226905152000086, 55.79693125400014],
+                            [26.27971846600013, 55.74323944100016],
+                            [26.342350301000067, 55.71634185800015],
+                            [26.481049846000133, 55.678308005000034],
+                            [26.53748050900009, 55.66952301000005],
+                            [26.594531291000067, 55.66699086600015],
+                            [26.603833048000098, 55.64327138300011],
+                            [26.60765710500004, 55.61645131500002],
+                            [26.605176635000078, 55.59009633400016],
+                            [26.59556481900006, 55.568030498000056],
+                            [26.576134480000093, 55.550563864000125],
+                            [26.551639852000108, 55.534492493000144],
+                            [26.532106161000115, 55.516250712],
+                            [26.5276619870001, 55.49216949500005],
+                            [26.54647220900011, 55.47124054000007],
+                            [26.543268270000056, 55.45961334200011],
+                            [26.507818238000112, 55.439149475000065],
+                            [26.499239950000085, 55.42809071900014],
+                            [26.486010783000093, 55.390832012000104],
+                            [26.479086141000096, 55.38137522400014],
+                            [26.455211629000132, 55.356105449],
+                            [26.445496460000072, 55.33750193300013],
+                            [26.450043986000107, 55.32706329400018],
+                            [26.46575362200008, 55.320862122],
+                            [26.525388224000093, 55.30809804400003],
+                            [26.542338094000087, 55.307581279000104],
+                            [26.602696167000087, 55.31688303700012],
+                            [26.768629191000088, 55.300243225000095],
+                            [26.79157352700011, 55.29016632100017],
+                            [26.800720256000087, 55.273319804],
+                            [26.78966149900009, 55.25719675800012],
+                            [26.76558028100007, 55.24670644200016],
+                            [26.701088094000113, 55.236836243000155],
+                            [26.685688517000127, 55.23161692300006],
+                            [26.656956421000128, 55.215338847000126],
+                            [26.641143432000035, 55.202833151000114],
+                            [26.633908732000066, 55.19218780600015],
+                            [26.627500854000118, 55.164437561],
+                            [26.616338745000093, 55.135395406000114],
+                            [26.60093916800011, 55.12082265200014],
+                            [26.578925008000056, 55.11854888900014],
+                            [26.47340173300006, 55.1456790160001],
+                            [26.459139038000103, 55.14474884100015],
+                            [26.45066410300009, 55.13983958000004],
+                            [26.444772989000086, 55.13394846600012],
+                            [26.4385718180001, 55.13002105800014],
+                            [26.42875329600014, 55.12821238200014],
+                            [26.420278361000044, 55.12810903000003],
+                            [26.309484090000122, 55.14464548700011],
+                            [26.26442224100009, 55.14009796200018],
+                            [26.233002971000133, 55.111624248000155],
+                            [26.230315796000127, 55.10025543200008],
+                            [26.231245971000078, 55.075450745000026],
+                            [26.229385620000073, 55.063410136000144],
+                            [26.224631388000063, 55.054883525000136],
+                            [26.187837768000065, 55.008736471000084],
+                            [26.153627970000084, 54.978505758],
+                            [26.138641805000105, 54.96894561800009],
+                            [26.10257165600009, 54.95700836200013],
+                            [25.9811320390001, 54.94269399000014],
+                            [25.96252852400005, 54.94290069600011],
+                            [25.926148315000063, 54.94775828100013],
+                            [25.907854858000093, 54.9480683390001],
+                            [25.870234416000073, 54.9388182580001],
+                            [25.858452189000076, 54.93297882100002],
+                            [25.85483483900009, 54.92548573800017],
+                            [25.85307784000011, 54.916442363000115],
+                            [25.846669962000078, 54.906210429000126],
+                            [25.825792684000106, 54.89199941],
+                            [25.802538290000086, 54.881612447000165],
+                            [25.78269453900009, 54.869675192000116],
+                            [25.77225590000006, 54.8508649700001],
+                            [25.773702840000055, 54.84192494700007],
+                            [25.78228112800008, 54.821977845000056],
+                            [25.782901245000062, 54.813709615],
+                            [25.778457072000037, 54.80528635700004],
+                            [25.77339278200006, 54.80337432900011],
+                            [25.76657149200011, 54.80327097600018],
+                            [25.756752970000065, 54.800377096],
+                            [25.73494551600004, 54.78905995700002],
+                            [25.72430017100004, 54.78011993400018],
+                            [25.72119958500008, 54.76673573900013],
+                            [25.724610229000117, 54.71567942300008],
+                            [25.7230599370001, 54.70534413700007],
+                            [25.719132528000042, 54.694750468000095],
+                            [25.713861531000106, 54.685552063999985],
+                            [25.70952071200011, 54.6756301890001],
+                            [25.708383830000116, 54.66302113900015],
+                            [25.715101766000117, 54.643229065000085],
+                            [25.739906454000078, 54.60772735600012],
+                            [25.74559086100001, 54.58840037],
+                            [25.740423217000114, 54.56850494399999],
+                            [25.726470581000115, 54.552950338000144],
+                            [25.70735030100013, 54.541529847000064],
+                            [25.64616540500009, 54.520394186000104],
+                            [25.630869181000037, 54.50835357700005],
+                            [25.61991377700008, 54.488096416000026],
+                            [25.615572958000087, 54.46189646400001],
+                            [25.616296427000094, 54.441070863000064],
+                            [25.612575724000067, 54.42179555300011],
+                            [25.594695678000104, 54.40009145100014],
+                            [25.54880700600006, 54.36774200500004],
+                            [25.52999678600014, 54.346141256000166],
+                            [25.528653198000086, 54.32097483400004],
+                            [25.54229577600009, 54.30805572500013],
+                            [25.56399987800009, 54.30314646500009],
+                            [25.607408081000074, 54.30485178700014],
+                            [25.667352743000066, 54.32330027300016],
+                            [25.682338908000133, 54.32562571300009],
+                            [25.69598148600005, 54.32097483400004],
+                            [25.70176924600011, 54.312758281000086],
+                            [25.704766480000018, 54.30299143500004],
+                            [25.715411825000103, 54.285214742000036],
+                            [25.719235881000145, 54.2815457160001],
+                            [25.723266642000056, 54.28097727500007],
+                            [25.734738811000057, 54.283199361000165],
+                            [25.739286336000102, 54.28257924500009],
+                            [25.748898152, 54.276326396000094],
+                            [25.757786499000133, 54.268988343],
+                            [25.765641316000142, 54.25999664300015],
+                            [25.77225590000006, 54.24893788700014],
+                            [25.776286662000047, 54.24563059500015],
+                            [25.78176436400014, 54.24444203700013],
+                            [25.786621949000075, 54.242323304000145],
+                            [25.78920577000008, 54.236225485000105],
+                            [25.786828654000118, 54.23178131100009],
+                            [25.775046427000117, 54.22247955300015],
+                            [25.771945841000075, 54.21788035100012],
+                            [25.77101566600004, 54.172146708000085],
+                            [25.763057495000055, 54.15643707300002],
+                            [25.740009806000103, 54.14625681600016],
+                            [25.72812422700008, 54.14522328800008],
+                            [25.690607137000086, 54.148220520000095],
+                            [25.679755086000114, 54.14532664000011],
+                            [25.663942098000117, 54.132355855000085],
+                            [25.6535034580001, 54.1287385050001],
+                            [25.63159265100003, 54.12832509400009],
+                            [25.543019247000075, 54.13695505800003],
+                            [25.516044149000038, 54.14475820000013],
+                            [25.493306518000082, 54.157522278000116],
+                            [25.485761759000127, 54.17540232400007],
+                            [25.493203165000125, 54.18243031900009],
+                            [25.52172855600008, 54.18821807900015],
+                            [25.52896325700007, 54.19565948500018],
+                            [25.52338220200005, 54.204237773000116],
+                            [25.499300984000087, 54.21183420800015],
+                            [25.50167810000005, 54.22175608400006],
+                            [25.522141967000096, 54.22862904900013],
+                            [25.545499715000062, 54.22749216800004],
+                            [25.553974650000043, 54.23126454800014],
+                            [25.483487996000093, 54.287695211000184],
+                            [25.478682088000085, 54.29332794200012],
+                            [25.472067505000098, 54.297151999000064],
+                            [25.459355103000036, 54.298908997000055],
+                            [25.43413700400009, 54.2918293260001],
+                            [25.394036092000107, 54.25715443899998],
+                            [25.369748169000104, 54.247904358000156],
+                            [25.287582641000082, 54.24521718400014],
+                            [25.224123983000112, 54.258549703000156],
+                            [25.206243937000067, 54.25679270500008],
+                            [25.193531535000115, 54.24366689100013],
+                            [25.17306766700005, 54.19658966100003],
+                            [25.15653121000005, 54.17571238200016],
+                            [25.115603475000054, 54.14878896100005],
+                            [25.0719885660001, 54.13220082700003],
+                            [25.027133423000095, 54.12786000600006],
+                            [24.948275187000093, 54.14589508100006],
+                            [24.902283163000074, 54.1497708130001],
+                            [24.855981079000088, 54.146721903000085],
+                            [24.82156457500014, 54.13452626600015],
+                            [24.817533813000068, 54.12822174100016],
+                            [24.81743046000011, 54.12062530500002],
+                            [24.818670695000066, 54.11395904600008],
+                            [24.81815393100004, 54.110134990000134],
+                            [24.799447062000127, 54.103210348000154],
+                            [24.790558716000135, 54.096595765000146],
+                            [24.784254191000116, 54.09623402900017],
+                            [24.78249719200005, 54.09287506200014],
+                            [24.787148071000104, 54.07763051400011],
+                            [24.799033651000116, 54.05602976500013],
+                            [24.81246952300009, 54.038924866000094],
+                            [24.821357870000096, 54.01990793900005],
+                            [24.819394165000062, 53.99257110600011],
+                            [24.806371704000128, 53.9753111780001],
+                            [24.78869836500013, 53.969678447],
+                            [24.723896118000113, 53.963425599000075],
+                            [24.705602661000057, 53.964200745000184],
+                            [24.690823201000114, 53.972830709000114],
+                            [24.677904094, 53.992312724000115],
+                            [24.67428674300004, 53.99370798800011],
+                            [24.67056604000004, 53.994276429000145],
+                            [24.666845336000108, 53.99386301700015],
+                            [24.642970825000134, 53.98301096700003],
+                            [24.579098755000075, 53.975621237],
+                            [24.528662557000075, 53.9583613080001],
+                            [24.414044230000115, 53.89769317600003],
+                            [24.377870728000087, 53.88684112600007],
+                            [24.341903931000015, 53.88704783200005],
+                            [24.310174601000114, 53.892680563000155],
+                            [24.276378215000108, 53.89180206300004],
+                            [24.25705122900007, 53.894024150000014],
+                            [24.24640588400007, 53.90363596700005],
+                            [24.229145955000092, 53.93236806300014],
+                            [24.20113732900009, 53.952470195000004],
+                            [24.1696147050001, 53.958929749000056],
+                            [24.13674849500009, 53.95541575200009],
+                            [24.074943482000094, 53.935727031000155],
+                            [24.045384562000066, 53.930869446000045],
+                            [23.981305786000064, 53.930404358000104],
+                            [23.96487268000007, 53.93272979700005],
+                            [23.93541711400007, 53.94394358300009],
+                            [23.919810832000053, 53.94776763900005],
+                            [23.90472131300004, 53.946062317000056],
+                            [23.8283435460001, 53.920069071000015],
+                            [23.820592082000076, 53.919293925],
+                            [23.812117147000066, 53.92084421900002],
+                            [23.794133749000082, 53.927097066000115],
+                            [23.78720910600012, 53.927923890000145],
+                            [23.77180952900011, 53.92430653900006],
+                            [23.754446248000107, 53.916761780000016],
+                            [23.691917765000113, 53.91149078400015],
+                            [23.64261844900011, 53.898985087000156],
+                            [23.627115519000114, 53.89820994100016],
+                            [23.60995894400014, 53.901827291000146],
+                            [23.520145305000142, 53.93397003200009],
+                            [23.485625448000064, 53.93929270400012],
+                            [23.4897595620001, 53.945132142000105],
+                            [23.490379679000057, 53.950609843],
+                            [23.48748579900007, 53.95562245700016],
+                            [23.48159468600008, 53.96011830700009],
+                            [23.47094934100008, 53.96528595000008],
+                            [23.46288781700008, 53.97252065000005],
+                            [23.458650350000138, 53.98161570300011],
+                            [23.459270467000096, 53.992312724000115],
+                            [23.464128052000035, 53.99675689700013],
+                            [23.469502401000085, 54.00068430600011],
+                            [23.48159468600008, 54.006627096000116],
+                            [23.496477498000104, 54.021974996],
+                            [23.496167440000132, 54.04455759700012],
+                            [23.48159468600008, 54.091221415000106],
+                            [23.47394657400008, 54.112563782],
+                            [23.462991170000123, 54.13493967800017],
+                            [23.449038534000124, 54.15493845700003],
+                            [23.432502075000116, 54.16930450500003],
+                            [23.423303670000053, 54.17250844300018],
+                            [23.40180627400008, 54.175970765000116],
+                            [23.391470988000094, 54.18010487900015],
+                            [23.382272583000088, 54.18785634400017],
+                            [23.364082479000047, 54.208268535000016],
+                            [23.35447066200004, 54.2170535280001],
+                            [23.316023397000095, 54.2362771610001],
+                            [23.235408162000084, 54.254157207000084],
+                            [23.197270956000125, 54.267851461000085],
+                            [23.135259236000078, 54.29828888000016],
+                            [23.11706913200004, 54.30345652300014],
+                            [23.096915324000065, 54.30082102500016],
+                            [23.073040812000073, 54.29487823500013],
+                            [23.050096476000135, 54.29482655900013],
+                            [23.032113078000037, 54.30955434200003],
+                            [23.03221643100008, 54.320148010000096],
+                            [23.03800419100014, 54.331465149000095],
+                            [23.04162154200011, 54.340973613000145],
+                            [23.035317016000107, 54.34650299100015],
+                            [23.001003866000104, 54.34888010700011],
+                            [22.989738404000036, 54.353375956000136],
+                            [22.98343387800011, 54.35978383500016],
+                            [22.978989706000107, 54.367586976],
+                            [22.97330529800007, 54.37539011700004],
+                            [22.96265995300007, 54.38169464200003],
+                            [22.95242801900008, 54.38308990500012],
+                            [22.929690389000115, 54.380299378000146],
+                            [22.918838338000057, 54.38112620100015],
+                            [22.858893677000083, 54.39921295200018],
+                            [22.837602986000093, 54.40091827500005],
+                            [22.812694946000136, 54.394096985000104],
+                            [22.786029907000085, 54.36520986000015],
+                            [22.76721968600006, 54.35626983700003],
+                            [22.7069649660001, 54.41874664300009],
+                            [22.680403279000075, 54.45321482400006],
+                            [22.6746155190001, 54.492282206000155],
+                            [22.681746867000125, 54.56990020800008],
+                            [22.70365767400011, 54.617545878000115],
+                            [22.70810184700011, 54.635632629000106],
+                            [22.7069649660001, 54.646484680000164],
+                            [22.700763794000125, 54.669325663000095],
+                            [22.700867147000054, 54.679557597000056],
+                            [22.705104615000096, 54.68653391600007],
+                            [22.727015422000136, 54.70534413700007],
+                            [22.727532186000076, 54.709323222000066],
+                            [22.72484501100007, 54.71376739500006],
+                            [22.722777954000094, 54.718573304000145],
+                            [22.72484501100007, 54.72337921200006],
+                            [22.728255656000073, 54.72508453400003],
+                            [22.736730591000082, 54.72632476800008],
+                            [22.74727258300007, 54.73159576400008],
+                            [22.76484257000004, 54.737125143000114],
+                            [22.773007446000037, 54.74249949200008],
+                            [22.786650024000068, 54.755987041000125],
+                            [22.817759237000104, 54.769164531000015],
+                            [22.8328487550001, 54.77867299399999],
+                            [22.845767863000106, 54.79613962800011],
+                            [22.848351684000107, 54.813812968000136],
+                            [22.84432092300011, 54.83226145500005],
+                            [22.829334758000126, 54.872724101000145],
+                            [22.821273234000074, 54.8854881800001],
+                            [22.808870891000083, 54.89375640900006],
+                            [22.749236287000084, 54.90987945600013],
+                            [22.740968058000135, 54.91763092100014],
+                            [22.752130168000065, 54.931118469000104],
+                            [22.73879764800006, 54.93411570300013],
+                            [22.72918583200004, 54.94036855100002],
+                            [22.722054484000097, 54.94718984000017],
+                            [22.715543253000135, 54.95137563100012],
+                            [22.70613814200007, 54.953132630000184],
+                            [22.649914185000085, 54.95287424800004],
+                            [22.63348107900012, 54.9579385380001],
+                            [22.621698852000122, 54.970030823000066],
+                            [22.608366333000106, 54.992406718000055],
+                            [22.59162316800007, 55.03762359600013],
+                            [22.580667765000072, 55.057622376],
+                            [22.565474894000143, 55.067802633000056],
+                            [22.54108361900012, 55.0757608040001],
+                            [22.436283814000063, 55.05777740500012],
+                            [22.251282186000083, 55.07085154200017],
+                            [22.142658325000067, 55.054625143000166],
+                            [22.12984257000008, 55.046977030000086],
+                            [22.11847375500011, 55.037778626],
+                            [22.09987024000014, 55.02992380800005],
+                            [22.076822551000078, 55.02858022100018],
+                            [22.049950805000094, 55.03354115800015],
+                            [22.027729940000143, 55.04439320900009],
+                            [22.018634887000076, 55.060929667],
+                            [22.018634887000076, 55.07731109600003],
+                            [22.01543094900009, 55.08842153000013],
+                            [22.00344201700005, 55.093485820000026],
+                            [21.977500447000097, 55.09198720300012],
+                            [21.9513521720001, 55.08046335900009],
+                            [21.942773885000065, 55.078292948000104],
+                            [21.932955363000104, 55.08046335900009],
+                            [21.90856408700006, 55.08986847000013],
+                            [21.873217407000055, 55.09493276000001],
+                            [21.85389042200012, 55.10221913700009],
+                            [21.819887329000064, 55.119324036000066],
+                            [21.750640910000072, 55.127954],
+                            [21.733380982000085, 55.136325582000076],
+                            [21.716224405000105, 55.14945139600003],
+                            [21.645841105000073, 55.18102569600002],
+                            [21.605120076000105, 55.192497864000025],
+                            [21.503937622000137, 55.19440989200013],
+                            [21.46766076600008, 55.2111530560001],
+                            [21.405545695000082, 55.27238962800014],
+                            [21.374849894000132, 55.28995961500011],
+                            [21.34983850100005, 55.28778920500012],
+                            [21.267602287364923, 55.24867008630527],
+                            [21.26905358200014, 55.253566799000154],
+                            [21.264496290000096, 55.276556708000115],
+                            [21.264414910000113, 55.284002997000115],
+                            [21.270843946000127, 55.28803131700008],
+                            [21.278086785000138, 55.286566473000036],
+                            [21.28532962300008, 55.287054755],
+                            [21.29118899800011, 55.297064520000085],
+                            [21.28923587300008, 55.305243231000084],
+                            [21.282481316000144, 55.31683991100003],
+                            [21.27418053500014, 55.327337958000086],
+                            [21.267588738000086, 55.33185455900003],
+                            [21.259450717000078, 55.33624909100003],
+                            [21.25635826900009, 55.34674713700018],
+                            [21.257090691000116, 55.369370835000055],
+                            [21.246592644000142, 55.37018463700015],
+                            [21.188812696000127, 55.338609117000075],
+                            [21.18336022200009, 55.3461774760001],
+                            [21.183278842000107, 55.3483747420001],
+                            [21.186045769000145, 55.34918854400003],
+                            [21.224294467000103, 55.39931875200004],
+                            [21.232758009000065, 55.406927802000055],
+                            [21.24830162900014, 55.41787344000012],
+                            [21.248383009000122, 55.44232819200006],
+                            [21.236582879000053, 55.48265208500014],
+                            [21.224294467000103, 55.51239655200005],
+                            [21.222911004000107, 55.52020905200014],
+                            [21.218516472000147, 55.52362702000014],
+                            [21.208994988000143, 55.52960846600017],
+                            [21.19939212300008, 55.53766510600009],
+                            [21.195078972000147, 55.547186591000106],
+                            [21.19605553500014, 55.55939362200017],
+                            [21.197764519000145, 55.56732819200015],
+                            [21.198090040000068, 55.57477448100012],
+                            [21.195078972000147, 55.58510976800012],
+                            [21.157562696000042, 55.64175039300004],
+                            [21.150157097000147, 55.659328518000144],
+                            [21.14722741000014, 55.678168036],
+                            [21.140798373000024, 55.688137111000074],
+                            [21.09937584700012, 55.72907135600012],
+                            [21.089528842000103, 55.73525625200007],
+                            [21.080739780000044, 55.73859284100011],
+                            [21.07439212300011, 55.74494049700003],
+                            [21.069834832000137, 55.76972077],
+                            [21.060557488000082, 55.789252020000085],
+                            [21.04468834700006, 55.87372467700013],
+                            [21.04468834700006, 55.91771067900005],
+                            [21.046885613000143, 55.92865631700012],
+                            [21.05616295700011, 55.942531643],
+                            [21.05836022200012, 55.951849677000055],
+                            [21.05836022200012, 56.037543036000116],
+                            [21.053398015984072, 56.07260387399778],
+                            [21.091352986000118, 56.0778960170001],
+                            [21.150160767000102, 56.078180237000154],
+                            [21.190365031000113, 56.08445892400009],
+                            [21.205351196000095, 56.103424174000125],
+                            [21.212585897000082, 56.13099355100003],
+                            [21.229639119000097, 56.16318796800009],
+                            [21.25485721800007, 56.185202128000135],
+                            [21.29041060300011, 56.20693206800014],
+                            [21.327617635000106, 56.2243728640001],
+                            [21.358313436000056, 56.233235373000106],
+                            [21.40368534300009, 56.23447560700005],
+                            [21.41929162600013, 56.23739532500004],
+                            [21.558921346000147, 56.29728831000001],
+                            [21.59602502500013, 56.3078819790001],
+                            [21.684495076000076, 56.31010406600008],
+                            [22.094082479000065, 56.417410177000065],
+                            [22.139144328000015, 56.41570485400008],
+                            [22.158161255000095, 56.410252991],
+                            [22.195264933000146, 56.394853414000025],
+                            [22.214901977000096, 56.390383403],
+                            [22.511731404000045, 56.39596445800011],
+                            [22.575810180000076, 56.38772206700018],
+                            [22.604748982000046, 56.37909210200003],
+                            [22.649087361000085, 56.35309885700018],
+                            [22.666347290000147, 56.34909393400009],
+                            [22.681436808000058, 56.35030833000012],
+                            [22.822926880000093, 56.38286448200016],
+                            [22.888969360000146, 56.408444316000114],
+                            [22.924522746, 56.41211334300003],
+                            [22.95697554500012, 56.401984762000055],
+                            [22.981366822000066, 56.373175151000126],
+                            [23.01671350100014, 56.323849996000135],
+                            [23.06229211400006, 56.30416127600007],
+                            [23.11272831200006, 56.310879212000096],
+                            [23.162854451000072, 56.341006572000175],
+                            [23.15417281100011, 56.35139353400011],
+                            [23.172569620000104, 56.3579564410001],
+                            [23.288428182000075, 56.373045960000084],
+                            [23.31064904800013, 56.370591329000135],
+                            [23.48159468600008, 56.33010284500013],
+                            [23.517561482000133, 56.32865590400003],
+                            [23.577712850000093, 56.348603007000136],
+                            [23.60985559100004, 56.35382232700005],
+                            [23.679412069000108, 56.35185862200014],
+                            [23.706697225000138, 56.354442444000036],
+                            [23.715068807000108, 56.35273712200008],
+                            [23.723543742000114, 56.345812480000106],
+                            [23.724783976000136, 56.33839691200008],
+                            [23.723647094000057, 56.33211822600007],
+                            [23.72499068200011, 56.32881093400009],
+                            [23.756099894000073, 56.325968730000014],
+                            [23.8250362550001, 56.334908753000136],
+                            [23.85810917200007, 56.334391989],
+                            [23.981305786000064, 56.31240366600012],
+                            [24.075150187000133, 56.27119171200012],
+                            [24.108636516000047, 56.26070139600007],
+                            [24.138918905000082, 56.25744578000008],
+                            [24.16682417800007, 56.260313823000054],
+                            [24.28764367700009, 56.29553131100012],
+                            [24.31854618400007, 56.298580221000165],
+                            [24.35079227700004, 56.29155222600015],
+                            [24.4143542890001, 56.26550730400008],
+                            [24.44722049900014, 56.26052052800013],
+                            [24.481326945000088, 56.268840435000165],
+                            [24.538997843000086, 56.287624817000086],
+                            [24.5579114170001, 56.298580221000165],
+                            [24.639146770000078, 56.35997182200005],
+                            [24.678627563000106, 56.37728342700014],
+                            [24.80554488100009, 56.40854766900004],
+                            [24.815570109000102, 56.40880605100001],
+                            [24.837687622000118, 56.40394846599999],
+                            [24.845852498000056, 56.404930319000144],
+                            [24.852157023000075, 56.413663635000134],
+                            [24.853397257000097, 56.42472239300004],
+                            [24.857117960000096, 56.435367737000135],
+                            [24.870967245000084, 56.442602437000104],
+                            [24.89225793400007, 56.43872670600014],
+                            [24.910137980000115, 56.42195770299999],
+                        ],
+                    ],
+                ],
+            },
+        
+        },
+    ],
+}
+
+L.geoJSON(geo).addTo(mymap) // LIETUVOS PLOTO PAŽYMĖJIMAS PRIDEDAMAS Į ŽEMĖLAPĮ
+
+  
+      </script>
+
+         
+<footer style="text-align: center; bottom: 0;"><p>Made by Lukas Minkevičius AEIf-17, Vilnius Tech, 2021</p></footer>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+    "name": "weatherapp",
+    "version": "1.0.0",
+    "description": "Bachelor work which purpose is to give aviation weather data in various forms for the user ",
+    "homepage": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "SET NODE_ENV=production & nodemon src/app.js",
+        "startdev": "nodemon src/app.js"
+    },
+    "author": "Lukas Minkevičius",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^0.21.1",
+        "express": "^4.17.1",
+        "hbs": "^4.1.1",
+        "mysql": "^2.18.1",
+        "nodemon": "^2.0.7"
+    }
+}
